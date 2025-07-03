@@ -16,29 +16,39 @@ if "client_ready" not in st.session_state:
 # --------------------------------------------------------------------------
 # Load configuration from Streamlit secrets and set defaults
 # --------------------------------------------------------------------------
-if "config_loaded" not in st.session_state:
-	# Helper function to safely get secrets with fallback
-	def get_secret(key, default=""):
-		try:
-			return st.secrets.get(key, default)
-		except (KeyError, AttributeError):
-			return default
-	
-	# Custom connection defaults from secrets
+# Helper function to safely get secrets with fallback
+def get_secret(key, default=""):
+	try:
+		return st.secrets.get(key, default)
+	except (KeyError, AttributeError):
+		return default
+
+# Initialize custom connection defaults from secrets
+if "custom_http_host" not in st.session_state:
 	st.session_state.custom_http_host = get_secret("CUSTOM_HTTP_HOST", "localhost")
+if "custom_http_port" not in st.session_state:
 	st.session_state.custom_http_port = int(get_secret("CUSTOM_HTTP_PORT", "8080"))
+if "custom_grpc_host" not in st.session_state:
 	st.session_state.custom_grpc_host = get_secret("CUSTOM_GRPC_HOST", "localhost")
+if "custom_grpc_port" not in st.session_state:
 	st.session_state.custom_grpc_port = int(get_secret("CUSTOM_GRPC_PORT", "50051"))
+if "custom_secure" not in st.session_state:
 	st.session_state.custom_secure = get_secret("CUSTOM_SECURE", "false").lower() == "true"
+if "custom_api_key" not in st.session_state:
 	st.session_state.custom_api_key = get_secret("CUSTOM_API_KEY", "")
-	
-	# Vectorizer API keys from secrets
+
+# Initialize vectorizer API keys from secrets
+if "openai_key" not in st.session_state:
 	st.session_state.openai_key = get_secret("OPENAI_API_KEY", "")
+if "cohere_key" not in st.session_state:
 	st.session_state.cohere_key = get_secret("COHERE_API_KEY", "")
+if "jinaai_key" not in st.session_state:
 	st.session_state.jinaai_key = get_secret("JINAAI_API_KEY", "")
+if "huggingface_key" not in st.session_state:
 	st.session_state.huggingface_key = get_secret("HUGGINGFACE_API_KEY", "")
-	
-	# Connection type preference from secrets
+
+# Initialize connection type preference from secrets
+if "use_custom" not in st.session_state or "use_local" not in st.session_state:
 	use_custom_connection = get_secret("USE_CUSTOM_CONNECTION", "true").lower() == "true"
 	if use_custom_connection:
 		st.session_state.use_custom = True
@@ -46,8 +56,6 @@ if "config_loaded" not in st.session_state:
 	else:
 		st.session_state.use_local = True
 		st.session_state.use_custom = False
-	
-	st.session_state.config_loaded = True
 
 # Initialize remaining session state variables if not already set
 if "local_http_port" not in st.session_state:
@@ -123,6 +131,7 @@ if not st.session_state.client_ready:
 			"Local Cluster API Key",
 			placeholder="Enter Cluster Admin Key",
 			type="password",
+			value=st.session_state.local_api_key,
 			key="local_api_key"
 		).strip()
 
@@ -133,6 +142,7 @@ if not st.session_state.client_ready:
 		st.sidebar.text_input(
 			"Custom HTTP Host",
 			placeholder="e.g., localhost",
+			value=st.session_state.custom_http_host,
 			key="custom_http_host"
 		).strip()
 		st.sidebar.number_input(
@@ -143,6 +153,7 @@ if not st.session_state.client_ready:
 		st.sidebar.text_input(
 			"Custom gRPC Host",
 			placeholder="e.g., localhost",
+			value=st.session_state.custom_grpc_host,
 			key="custom_grpc_host"
 		).strip()
 		st.sidebar.number_input(
@@ -152,12 +163,14 @@ if not st.session_state.client_ready:
 		)
 		st.sidebar.checkbox(
 			"Use Secure Connection (HTTPS/gRPC)",
+			value=st.session_state.custom_secure,
 			key="custom_secure"
 		)
 		st.sidebar.text_input(
 			"Custom Cluster API Key",
 			placeholder="Enter Cluster Admin Key",
 			type="password",
+			value=st.session_state.custom_api_key,
 			key="custom_api_key"
 		).strip()
 
@@ -168,12 +181,14 @@ if not st.session_state.client_ready:
 		st.sidebar.text_input(
 			"Cloud Cluster Endpoint",
 			placeholder="Enter Cluster Endpoint (URL)",
+			value=st.session_state.cloud_endpoint,
 			key="cloud_endpoint"
 		).strip()
 		st.sidebar.text_input(
 			"Cloud Cluster API Key",
 			placeholder="Enter Cluster Admin Key",
 			type="password",
+			value=st.session_state.cloud_api_key,
 			key="cloud_api_key"
 		).strip()
 
@@ -181,10 +196,10 @@ if not st.session_state.client_ready:
 	# Vectorizers Integration API Keys Section
 	# --------------------------------------------------------------------------
 	st.sidebar.markdown("Add API keys for Model provider integrations (optional):")
-	st.sidebar.text_input("OpenAI API Key", type="password", key="openai_key")
-	st.sidebar.text_input("Cohere API Key", type="password", key="cohere_key")
-	st.sidebar.text_input("JinaAI API Key", type="password", key="jinaai_key")
-	st.sidebar.text_input("HuggingFace API Key", type="password", key="huggingface_key")
+	st.sidebar.text_input("OpenAI API Key", type="password", value=st.session_state.openai_key, key="openai_key")
+	st.sidebar.text_input("Cohere API Key", type="password", value=st.session_state.cohere_key, key="cohere_key")
+	st.sidebar.text_input("JinaAI API Key", type="password", value=st.session_state.jinaai_key, key="jinaai_key")
+	st.sidebar.text_input("HuggingFace API Key", type="password", value=st.session_state.huggingface_key, key="huggingface_key")
 
 	# --------------------------------------------------------------------------
 	# Connect/Disconnect Buttons

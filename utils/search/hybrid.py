@@ -5,6 +5,7 @@ import pandas as pd
 from typing import Tuple
 from weaviate import Client
 from weaviate.classes.query import MetadataQuery
+from weaviate.classes.query import HybridFusion
 
 # Hybrid search function
 # This function performs a hybrid search on a specified collection in Weaviate.
@@ -21,6 +22,7 @@ def hybrid_search(client: Client, collection: str, query: str, alpha: float = 0.
 			query=query,
 			alpha=alpha,
 			limit=limit,
+			fusion_type=HybridFusion.RELATIVE_SCORE,
 			return_metadata=MetadataQuery(
 				creation_time=True,
 				last_update_time=True,

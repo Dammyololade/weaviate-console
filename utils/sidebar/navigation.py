@@ -13,6 +13,7 @@ def navigate():
 	st.sidebar.page_link("pages/rbac.py", label="Role-Based Access Control", icon="🔐")
 	st.sidebar.page_link("pages/search.py", label="Search", icon="🧐")
 	st.sidebar.page_link("pages/create.py", label="Create", icon="➕")
+	st.sidebar.page_link("pages/add_document.py", label="Add Document", icon="📝")
 	st.sidebar.page_link("pages/read.py", label="Read", icon="📁")
 	st.sidebar.page_link("pages/update.py", label="Update", icon="🗃️")
 	st.sidebar.page_link("pages/delete.py", label="Delete", icon="🗑️")
