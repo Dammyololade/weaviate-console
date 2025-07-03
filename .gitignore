@@ -125,6 +125,10 @@ celerybeat.pid
 
 # Environments
 .env
+
+# Streamlit secrets (keep template, ignore actual secrets)
+.streamlit/secrets.toml
+!.streamlit/secrets.toml.template
 .venv
 env/
 venv/

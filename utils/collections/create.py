@@ -4,7 +4,7 @@ import pandas as pd
 from typing import List, Dict, Any, Optional
 from weaviate import Client
 from weaviate.util import generate_uuid5
-from weaviate.classes.config import Configure
+from weaviate.classes.config import Configure, DataType, Multi2VecField, Property
 from utils.cluster.cluster_operations import get_schema
 import streamlit as st
 import re
@@ -12,7 +12,7 @@ import re
 # Supported vectorizers
 def get_supported_vectorizers() -> List[str]:
 	print("get_supported_vectorizers() called")
-	return ["text2vec_openai", "text2vec_huggingface", "text2vec_cohere", "text2vec_jinaai", "BYOV"]
+	return ["text2vec_openai", "text2vec_huggingface", "text2vec_cohere", "text2vec_jinaai", "multi2vec_clip", "BYOV"]
 
 # Validate file format
 def validate_file_format(file_content: str, file_type: str) -> tuple[bool, str, Optional[List[Dict[str, Any]]]]:
@@ -54,6 +54,9 @@ def check_vectorizer_keys(vectorizer: str) -> tuple[bool, str]:
 		return False, "JinaAI API key is required. Please reconnect with the key or select BYOV."
 	elif vectorizer == "text2vec_huggingface" and not st.session_state.get("active_huggingface_key"):
 		return False, "HuggingFace API key is required. Please reconnect with the key or select BYOV."
+	elif vectorizer == "multi2vec_clip":
+		# multi2vec-clip runs locally and doesn't require API keys
+		return True, "multi2vec-clip uses local inference container (no API key required)"
 	return True, ""
 
 # Create a new collection
@@ -72,21 +75,63 @@ def create_collection(client: Client, collection_name: str, vectorizer: str) -> 
 		# Configure vectorizer
 		if vectorizer == "text2vec_openai":
 			vectorizer_config = Configure.Vectorizer.text2vec_openai()
+			client.collections.create(
+				name=collection_name,
+				vectorizer_config=vectorizer_config,
+				replication_config=Configure.replication(1)
+			)
 		elif vectorizer == "text2vec_huggingface":
 			vectorizer_config = Configure.Vectorizer.text2vec_huggingface()
+			client.collections.create(
+				name=collection_name,
+				vectorizer_config=vectorizer_config,
+				replication_config=Configure.replication(1)
+			)
 		elif vectorizer == "text2vec_cohere":
 			vectorizer_config = Configure.Vectorizer.text2vec_cohere()
+			client.collections.create(
+				name=collection_name,
+				vectorizer_config=vectorizer_config,
+				replication_config=Configure.replication(1)
+			)
 		elif vectorizer == "text2vec_jinaai":
 			vectorizer_config = Configure.Vectorizer.text2vec_jinaai()
+			client.collections.create(
+				name=collection_name,
+				vectorizer_config=vectorizer_config,
+				replication_config=Configure.replication(1)
+			)
+		elif vectorizer == "multi2vec_clip":
+			# multi2vec-clip requires named vectors configuration with specific properties
+			client.collections.create(
+				name=collection_name,
+				properties=[
+					Property(name="title", data_type=DataType.TEXT),
+					Property(name="description", data_type=DataType.TEXT),
+					Property(name="image", data_type=DataType.BLOB),
+				],
+				vectorizer_config=[
+					Configure.NamedVectors.multi2vec_clip(
+						name="multimodal_vector",
+						text_fields=[
+							Multi2VecField(name="title", weight=0.5),
+							Multi2VecField(name="description", weight=0.3)
+						],
+						image_fields=[
+							Multi2VecField(name="image", weight=0.7)
+						]
+					)
+				],
+				replication_config=Configure.replication(1)
+			)
 		elif vectorizer == "BYOV":
 			vectorizer_config = Configure.Vectorizer.none()
+			client.collections.create(
+				name=collection_name,
+				vectorizer_config=vectorizer_config,
+				replication_config=Configure.replication(1)
+			)
 
-		# Create collection
-		client.collections.create(
-			name=collection_name,
-			vectorizer_config=vectorizer_config,
-			replication_config=Configure.replication(3)
-		)
 		return True, f"Collection '{collection_name}' created successfully"
 	except Exception as e:
 		return False, f"Error creating collection: {str(e)}"
@@ -177,4 +222,4 @@ def get_collection_objects(client: Client, collection_name: str, limit: int = 10
 		df = pd.DataFrame(objects)
 		return True, f"Retrieved {len(df)} objects", df
 	except Exception as e:
-		return False, f"Error retrieving objects: {str(e)}", None 
+		return False, f"Error retrieving objects: {str(e)}", None

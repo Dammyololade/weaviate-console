@@ -12,12 +12,44 @@ import time
 # --------------------------------------------------------------------------
 if "client_ready" not in st.session_state:
 	st.session_state.client_ready = False
-if "use_local" not in st.session_state:
-	st.session_state.use_local = False
-if "use_custom" not in st.session_state:
-	st.session_state.use_custom = False
 
-# Local connection state
+# --------------------------------------------------------------------------
+# Load configuration from Streamlit secrets and set defaults
+# --------------------------------------------------------------------------
+if "config_loaded" not in st.session_state:
+	# Helper function to safely get secrets with fallback
+	def get_secret(key, default=""):
+		try:
+			return st.secrets.get(key, default)
+		except (KeyError, AttributeError):
+			return default
+	
+	# Custom connection defaults from secrets
+	st.session_state.custom_http_host = get_secret("CUSTOM_HTTP_HOST", "localhost")
+	st.session_state.custom_http_port = int(get_secret("CUSTOM_HTTP_PORT", "8080"))
+	st.session_state.custom_grpc_host = get_secret("CUSTOM_GRPC_HOST", "localhost")
+	st.session_state.custom_grpc_port = int(get_secret("CUSTOM_GRPC_PORT", "50051"))
+	st.session_state.custom_secure = get_secret("CUSTOM_SECURE", "false").lower() == "true"
+	st.session_state.custom_api_key = get_secret("CUSTOM_API_KEY", "")
+	
+	# Vectorizer API keys from secrets
+	st.session_state.openai_key = get_secret("OPENAI_API_KEY", "")
+	st.session_state.cohere_key = get_secret("COHERE_API_KEY", "")
+	st.session_state.jinaai_key = get_secret("JINAAI_API_KEY", "")
+	st.session_state.huggingface_key = get_secret("HUGGINGFACE_API_KEY", "")
+	
+	# Connection type preference from secrets
+	use_custom_connection = get_secret("USE_CUSTOM_CONNECTION", "true").lower() == "true"
+	if use_custom_connection:
+		st.session_state.use_custom = True
+		st.session_state.use_local = False
+	else:
+		st.session_state.use_local = True
+		st.session_state.use_custom = False
+	
+	st.session_state.config_loaded = True
+
+# Initialize remaining session state variables if not already set
 if "local_http_port" not in st.session_state:
 	st.session_state.local_http_port = 8080
 if "local_grpc_port" not in st.session_state:
@@ -25,35 +57,11 @@ if "local_grpc_port" not in st.session_state:
 if "local_api_key" not in st.session_state:
 	st.session_state.local_api_key = ""
 
-# Custom connection state
-if "custom_http_host" not in st.session_state:
-	st.session_state.custom_http_host = "localhost"
-if "custom_http_port" not in st.session_state:
-	st.session_state.custom_http_port = 8080
-if "custom_grpc_host" not in st.session_state:
-	st.session_state.custom_grpc_host = "localhost"
-if "custom_grpc_port" not in st.session_state:
-	st.session_state.custom_grpc_port = 50051
-if "custom_secure" not in st.session_state:
-	st.session_state.custom_secure = False
-if "custom_api_key" not in st.session_state:
-	st.session_state.custom_api_key = ""
-
 # Cloud connection state
 if "cloud_endpoint" not in st.session_state:
 	st.session_state.cloud_endpoint = ""
 if "cloud_api_key" not in st.session_state:
 	st.session_state.cloud_api_key = ""
-
-# Vectorizer keys
-if "openai_key" not in st.session_state:
-	st.session_state.openai_key = ""
-if "cohere_key" not in st.session_state:
-	st.session_state.cohere_key = ""
-if "jinaai_key" not in st.session_state:
-	st.session_state.jinaai_key = ""
-if "huggingface_key" not in st.session_state:
-	st.session_state.huggingface_key = ""
 	
 # Active connection state
 if "active_endpoint" not in st.session_state:

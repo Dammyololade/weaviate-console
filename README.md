@@ -18,7 +18,7 @@ Interact with and manage Weaviate Cluster operations. This app provides tools to
 - **Cloud**
 
 #### Vectorization
-- Support for OpenAI, Cohere, HuggingFace and JinaAI
+- Support for OpenAI, Cohere, HuggingFace, JinaAI, and Multi2vec-CLIP (multimodal)
 - Add API keys for vectorization providers (optional)
 - Vectorization during object updates
 
@@ -53,8 +53,9 @@ Interact with and manage Weaviate Cluster operations. This app provides tools to
 ### Object Operations
 - **Create** (⚠️ Admin API-Key required)
   - Create new collections
-  - Supported Vectorizers (OpenAI, Cohere, HuggingFace, JinaAI)
+  - Supported Vectorizers (OpenAI, Cohere, HuggingFace, JinaAI, Multi2vec-CLIP)
   - Batch upload data from CSV/JSON files
+  - Multi2vec-CLIP support for multimodal collections (text + image)
 
 - **Search**
   - Hybrid search combining vector and keyword capabilities
