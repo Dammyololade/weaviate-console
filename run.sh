@@ -30,6 +30,7 @@ echo "📚 Installing dependencies..."
 pip install -r requirements.txt
 
 # Start the Streamlit application
-echo "🌐 Starting Streamlit application..."
+echo "🌐 Starting Streamlit application in watch mode..."
 echo "📱 Application will be available at: http://localhost:8501"
-streamlit run streamlit_app.py
+echo "🔄 File watcher enabled - app will auto-refresh on changes"
+streamlit run streamlit_app.py --server.runOnSave=true

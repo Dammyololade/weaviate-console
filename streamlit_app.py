@@ -5,6 +5,7 @@ from utils.sidebar.navigation import navigate
 from utils.connection.weaviate_connection import close_weaviate_client
 from utils.sidebar.helper import update_side_bar_labels, clear_session_state
 from utils.page_config import set_custom_page_config
+from pages.connections import initialize_connection_session_state
 import time
 
 # --------------------------------------------------------------------------
@@ -13,69 +14,14 @@ import time
 if "client_ready" not in st.session_state:
 	st.session_state.client_ready = False
 
-# --------------------------------------------------------------------------
-# Load configuration from Streamlit secrets and set defaults
-# --------------------------------------------------------------------------
-# Helper function to safely get secrets with fallback
-def get_secret(key, default=""):
-	try:
-		return st.secrets.get(key, default)
-	except (KeyError, AttributeError):
-		return default
-
-# Initialize custom connection defaults from secrets
-if "custom_http_host" not in st.session_state:
-	st.session_state.custom_http_host = get_secret("CUSTOM_HTTP_HOST", "localhost")
-if "custom_http_port" not in st.session_state:
-	st.session_state.custom_http_port = int(get_secret("CUSTOM_HTTP_PORT", "8080"))
-if "custom_grpc_host" not in st.session_state:
-	st.session_state.custom_grpc_host = get_secret("CUSTOM_GRPC_HOST", "localhost")
-if "custom_grpc_port" not in st.session_state:
-	st.session_state.custom_grpc_port = int(get_secret("CUSTOM_GRPC_PORT", "50051"))
-if "custom_secure" not in st.session_state:
-	st.session_state.custom_secure = get_secret("CUSTOM_SECURE", "false").lower() == "true"
-if "custom_api_key" not in st.session_state:
-	st.session_state.custom_api_key = get_secret("CUSTOM_API_KEY", "")
-
-# Initialize vectorizer API keys from secrets
-if "openai_key" not in st.session_state:
-	st.session_state.openai_key = get_secret("OPENAI_API_KEY", "")
-if "cohere_key" not in st.session_state:
-	st.session_state.cohere_key = get_secret("COHERE_API_KEY", "")
-if "jinaai_key" not in st.session_state:
-	st.session_state.jinaai_key = get_secret("JINAAI_API_KEY", "")
-if "huggingface_key" not in st.session_state:
-	st.session_state.huggingface_key = get_secret("HUGGINGFACE_API_KEY", "")
-
-# Initialize connection type preference from secrets
-if "use_custom" not in st.session_state or "use_local" not in st.session_state:
-	use_custom_connection = get_secret("USE_CUSTOM_CONNECTION", "true").lower() == "true"
-	if use_custom_connection:
-		st.session_state.use_custom = True
-		st.session_state.use_local = False
-	else:
-		st.session_state.use_local = True
-		st.session_state.use_custom = False
-
-# Initialize remaining session state variables if not already set
-if "local_http_port" not in st.session_state:
-	st.session_state.local_http_port = 8080
-if "local_grpc_port" not in st.session_state:
-	st.session_state.local_grpc_port = 50051
-if "local_api_key" not in st.session_state:
-	st.session_state.local_api_key = ""
-
-# Cloud connection state
-if "cloud_endpoint" not in st.session_state:
-	st.session_state.cloud_endpoint = ""
-if "cloud_api_key" not in st.session_state:
-	st.session_state.cloud_api_key = ""
-	
 # Active connection state
 if "active_endpoint" not in st.session_state:
 	st.session_state.active_endpoint = ""
 if "active_api_key" not in st.session_state:
 	st.session_state.active_api_key = ""
+
+# Initialize connection session state
+initialize_connection_session_state()
 
 # ------------------------ß--------------------------------------------------
 # Streamlit Page Config
@@ -89,210 +35,8 @@ set_custom_page_config()
 # --------------------------------------------------------------------------
 navigate()
 
-st.sidebar.title("✨Weaviate Connection✨")
 
-if not st.session_state.client_ready:
-	# Set the default value of connection type
-	def local_checkbox_callback():
-		if st.session_state.use_local:
-			st.session_state.use_custom = False
 
-	def custom_checkbox_callback():
-		if st.session_state.use_custom:
-			st.session_state.use_local = False
-
-	# Connect to Weaviate
-	use_local = st.sidebar.checkbox("Local", key='use_local', on_change=local_checkbox_callback)
-	use_custom = st.sidebar.checkbox("Custom", key='use_custom', on_change=custom_checkbox_callback)
-
-	# Conditional UI based on checkboxes
-	if st.session_state.use_local:
-		st.sidebar.markdown(
-			'Clone the repository from [**Shah91n -> WeaviateCluster**](https://github.com/Shah91n/WeaviateCluster) GitHub and following the installation requirements. Then ensure that you have a local Weaviate instance running on your machine before attempting to connect.'
-		)
-		# This is now a display-only field, its value is derived from other state.
-		# It does NOT have a key, which is critical to avoid state conflicts.
-		st.sidebar.text_input(
-			"Local Cluster Endpoint",
-			value=f"http://localhost:{st.session_state.local_http_port}",
-			disabled=True,
-		)
-		st.sidebar.number_input(
-			"HTTP Port",
-			value=st.session_state.local_http_port,
-			key="local_http_port"
-		)
-		st.sidebar.number_input(
-			"gRPC Port",
-			value=st.session_state.local_grpc_port,
-			key="local_grpc_port"
-		)
-		st.sidebar.text_input(
-			"Local Cluster API Key",
-			placeholder="Enter Cluster Admin Key",
-			type="password",
-			value=st.session_state.local_api_key,
-			key="local_api_key"
-		).strip()
-
-	elif st.session_state.use_custom:
-		st.sidebar.markdown(
-			'Clone the repository from [**Shah91n -> WeaviateCluster**](https://github.com/Shah91n/WeaviateCluster) GitHub and following the installation requirements. Then ensure that you have a custom Weaviate instance running before attempting to connect.'
-		)
-		st.sidebar.text_input(
-			"Custom HTTP Host",
-			placeholder="e.g., localhost",
-			value=st.session_state.custom_http_host,
-			key="custom_http_host"
-		).strip()
-		st.sidebar.number_input(
-			"Custom HTTP Port",
-			value=st.session_state.custom_http_port,
-			key="custom_http_port"
-		)
-		st.sidebar.text_input(
-			"Custom gRPC Host",
-			placeholder="e.g., localhost",
-			value=st.session_state.custom_grpc_host,
-			key="custom_grpc_host"
-		).strip()
-		st.sidebar.number_input(
-			"Custom gRPC Port",
-			value=st.session_state.custom_grpc_port,
-			key="custom_grpc_port"
-		)
-		st.sidebar.checkbox(
-			"Use Secure Connection (HTTPS/gRPC)",
-			value=st.session_state.custom_secure,
-			key="custom_secure"
-		)
-		st.sidebar.text_input(
-			"Custom Cluster API Key",
-			placeholder="Enter Cluster Admin Key",
-			type="password",
-			value=st.session_state.custom_api_key,
-			key="custom_api_key"
-		).strip()
-
-	else: # Cloud connection
-		st.sidebar.markdown(
-			'Connect to a Weaviate Cloud Cluster hosted by Weaviate. You can create clusters at [Weaviate Cloud](https://console.weaviate.cloud/).'
-		)
-		st.sidebar.text_input(
-			"Cloud Cluster Endpoint",
-			placeholder="Enter Cluster Endpoint (URL)",
-			value=st.session_state.cloud_endpoint,
-			key="cloud_endpoint"
-		).strip()
-		st.sidebar.text_input(
-			"Cloud Cluster API Key",
-			placeholder="Enter Cluster Admin Key",
-			type="password",
-			value=st.session_state.cloud_api_key,
-			key="cloud_api_key"
-		).strip()
-
-	# --------------------------------------------------------------------------
-	# Vectorizers Integration API Keys Section
-	# --------------------------------------------------------------------------
-	st.sidebar.markdown("Add API keys for Model provider integrations (optional):")
-	st.sidebar.text_input("OpenAI API Key", type="password", value=st.session_state.openai_key, key="openai_key")
-	st.sidebar.text_input("Cohere API Key", type="password", value=st.session_state.cohere_key, key="cohere_key")
-	st.sidebar.text_input("JinaAI API Key", type="password", value=st.session_state.jinaai_key, key="jinaai_key")
-	st.sidebar.text_input("HuggingFace API Key", type="password", value=st.session_state.huggingface_key, key="huggingface_key")
-
-	# --------------------------------------------------------------------------
-	# Connect/Disconnect Buttons
-	# --------------------------------------------------------------------------
-	if st.sidebar.button("Connect", use_container_width=True, type="secondary"):
-		
-		close_weaviate_client()
-
-		# Vectorizers Integration API Keys
-		vectorizer_integration_keys = {}
-		if st.session_state.openai_key:
-			vectorizer_integration_keys["X-OpenAI-Api-Key"] = st.session_state.openai_key
-		if st.session_state.cohere_key:
-			vectorizer_integration_keys["X-Cohere-Api-Key"] = st.session_state.cohere_key
-		if st.session_state.jinaai_key:
-			vectorizer_integration_keys["X-JinaAI-Api-Key"] = st.session_state.jinaai_key
-		if st.session_state.huggingface_key:
-			vectorizer_integration_keys["X-HuggingFace-Api-Key"] = st.session_state.huggingface_key
-
-		if st.session_state.use_local:
-			if initialize_client(
-				use_local=True,
-				http_port_endpoint=st.session_state.local_http_port,
-				grpc_port_endpoint=st.session_state.local_grpc_port,
-				cluster_api_key=st.session_state.local_api_key,
-				vectorizer_integration_keys=vectorizer_integration_keys
-			):
-				st.sidebar.success("Local connection successful!")
-				# Set active connection info
-				st.session_state.active_endpoint = f"http://localhost:{st.session_state.local_http_port}"
-				st.session_state.active_api_key = st.session_state.local_api_key
-				# Persist the API keys in active_ keys
-				for key in ["openai_key", "cohere_key", "jinaai_key", "huggingface_key"]:
-					st.session_state[f"active_{key}"] = st.session_state.get(key, "")
-				st.rerun()
-
-			else:
-				st.sidebar.error("Connection failed!")
-		elif st.session_state.use_custom:
-			if initialize_client(
-				use_custom=True,
-				http_host_endpoint=st.session_state.custom_http_host,
-				http_port_endpoint=st.session_state.custom_http_port,
-				grpc_host_endpoint=st.session_state.custom_grpc_host,
-				grpc_port_endpoint=st.session_state.custom_grpc_port,
-				custom_secure=st.session_state.custom_secure,
-				cluster_api_key=st.session_state.custom_api_key,
-				vectorizer_integration_keys=vectorizer_integration_keys
-			):
-				st.sidebar.success("Custom Connection successful!")
-				# Set active connection info
-				protocol = "https" if st.session_state.custom_secure else "http"
-				st.session_state.active_endpoint = f"{protocol}://{st.session_state.custom_http_host}:{st.session_state.custom_http_port}"
-				st.session_state.active_api_key = st.session_state.custom_api_key
-				# Persist the API keys in active_ keys
-				for key in ["openai_key", "cohere_key", "jinaai_key", "huggingface_key"]:
-					st.session_state[f"active_{key}"] = st.session_state.get(key, "")
-				st.rerun()
-			else:
-				st.sidebar.error("Connection failed!")
-		else: # Cloud
-			cloud_endpoint = st.session_state.cloud_endpoint
-			if cloud_endpoint and not cloud_endpoint.startswith('https://'):
-				cloud_endpoint = f"https://{cloud_endpoint}"
-
-			if not cloud_endpoint or not st.session_state.cloud_api_key:
-				st.sidebar.error("Please insert the cluster endpoint and API key!")
-			else:
-				if initialize_client(
-					cluster_endpoint=cloud_endpoint,
-					cluster_api_key=st.session_state.cloud_api_key,
-					vectorizer_integration_keys=vectorizer_integration_keys
-				):
-					st.sidebar.success("Cloud Connection successful!")
-					# Set active connection info
-					st.session_state.active_endpoint = cloud_endpoint
-					st.session_state.active_api_key = st.session_state.cloud_api_key
-					# Persist the API keys in active_ keys
-					for key in ["openai_key", "cohere_key", "jinaai_key", "huggingface_key"]:
-						st.session_state[f"active_{key}"] = st.session_state.get(key, "")
-					st.rerun()
-				else:
-					st.sidebar.error("Connection failed!")
-	# print("DEBUG session_state (On Connect):", dict(st.session_state)) # uncomment during development to debug session state
-else:
-	if st.sidebar.button("Disconnect", use_container_width=True, type="primary"):
-		st.toast('Session, states and cache cleared! Weaviate client disconnected successfully!', icon='🔴')
-		time.sleep(1)
-		if st.session_state.get("client_ready"):
-			message = close_weaviate_client()
-			clear_session_state()
-			# print("DEBUG session_state (On Disconnect):", dict(st.session_state)) # uncomment during development to debug session state
-	st.sidebar.info("Disconnect Button does clear all session states and cache, and disconnect the Weaviate client to server if connected.")
 
 # Essential run for the first time
 update_side_bar_labels()

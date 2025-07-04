@@ -59,9 +59,19 @@ def check_vectorizer_keys(vectorizer: str) -> tuple[bool, str]:
 		return True, "multi2vec-clip uses local inference container (no API key required)"
 	return True, ""
 
-# Create a new collection
-def create_collection(client: Client, collection_name: str, vectorizer: str) -> tuple[bool, str]:
-	print(f"create_collection() called with collection_name: {collection_name}, vectorizer: {vectorizer}")
+# Get available data types for dynamic property creation
+def get_available_data_types() -> List[str]:
+	"""Return list of available Weaviate data types for property creation"""
+	return [
+		"TEXT", "TEXT_ARRAY", "INT", "INT_ARRAY", "BOOL", "BOOL_ARRAY",
+		"NUMBER", "NUMBER_ARRAY", "DATE", "DATE_ARRAY", "UUID", "UUID_ARRAY",
+		"GEO_COORDINATES", "BLOB", "PHONE_NUMBER", "OBJECT", "OBJECT_ARRAY"
+	]
+
+# Create a new collection with dynamic properties
+def create_collection_with_properties(client: Client, collection_name: str, vectorizer: str, 
+									  custom_properties: Optional[List[Dict[str, str]]] = None) -> tuple[bool, str]:
+	print(f"create_collection_with_properties() called with collection_name: {collection_name}, vectorizer: {vectorizer}")
 	try:
 		# Check if collection already exists
 		if client.collections.exists(collection_name):
@@ -72,12 +82,37 @@ def create_collection(client: Client, collection_name: str, vectorizer: str) -> 
 		if not has_keys:
 			return False, key_message
 
-		# Configure vectorizer
+		# Prepare properties list
+		properties = []
+		if custom_properties:
+			for prop in custom_properties:
+				prop_name = prop.get('name', '').strip()
+				prop_type = prop.get('type', 'TEXT')
+				prop_description = prop.get('description', '').strip()
+				
+				if prop_name:  # Only add if name is provided
+					# Sanitize property name
+					sanitized_name = re.sub(r'[^0-9a-zA-Z_]+', '_', prop_name)
+					if not re.match(r'^[A-Za-z_]', sanitized_name):
+						sanitized_name = '_' + sanitized_name
+					
+					# Convert string type to DataType enum
+					data_type = getattr(DataType, prop_type, DataType.TEXT)
+					
+					# Create property with optional description
+					prop_kwargs = {'name': sanitized_name, 'data_type': data_type}
+					if prop_description:
+						prop_kwargs['description'] = prop_description
+					
+					properties.append(Property(**prop_kwargs))
+
+		# Configure vectorizer and create collection
 		if vectorizer == "text2vec_openai":
 			vectorizer_config = Configure.Vectorizer.text2vec_openai()
 			client.collections.create(
 				name=collection_name,
 				vectorizer_config=vectorizer_config,
+				properties=properties if properties else None,
 				replication_config=Configure.replication(1)
 			)
 		elif vectorizer == "text2vec_huggingface":
@@ -85,6 +120,7 @@ def create_collection(client: Client, collection_name: str, vectorizer: str) -> 
 			client.collections.create(
 				name=collection_name,
 				vectorizer_config=vectorizer_config,
+				properties=properties if properties else None,
 				replication_config=Configure.replication(1)
 			)
 		elif vectorizer == "text2vec_cohere":
@@ -92,6 +128,7 @@ def create_collection(client: Client, collection_name: str, vectorizer: str) -> 
 			client.collections.create(
 				name=collection_name,
 				vectorizer_config=vectorizer_config,
+				properties=properties if properties else None,
 				replication_config=Configure.replication(1)
 			)
 		elif vectorizer == "text2vec_jinaai":
@@ -99,17 +136,23 @@ def create_collection(client: Client, collection_name: str, vectorizer: str) -> 
 			client.collections.create(
 				name=collection_name,
 				vectorizer_config=vectorizer_config,
+				properties=properties if properties else None,
 				replication_config=Configure.replication(1)
 			)
 		elif vectorizer == "multi2vec_clip":
-			# multi2vec-clip requires named vectors configuration with specific properties
+			# multi2vec-clip requires specific properties for multimodal embedding
+			default_multimodal_props = [
+				Property(name="title", data_type=DataType.TEXT),
+				Property(name="description", data_type=DataType.TEXT),
+				Property(name="image", data_type=DataType.BLOB),
+			]
+			# Combine default multimodal properties with custom ones
+			all_properties = default_multimodal_props + properties
+			
 			client.collections.create(
 				name=collection_name,
-				properties=[
-					Property(name="title", data_type=DataType.TEXT),
-					Property(name="description", data_type=DataType.TEXT),
-					Property(name="image", data_type=DataType.BLOB),
-				],
+				reranker_config=Configure.Reranker.transformers(),
+				properties=all_properties,
 				vectorizer_config=[
 					Configure.NamedVectors.multi2vec_clip(
 						name="multimodal_vector",
@@ -129,12 +172,18 @@ def create_collection(client: Client, collection_name: str, vectorizer: str) -> 
 			client.collections.create(
 				name=collection_name,
 				vectorizer_config=vectorizer_config,
+				properties=properties if properties else None,
 				replication_config=Configure.replication(1)
 			)
 
-		return True, f"Collection '{collection_name}' created successfully"
+		return True, f"Collection '{collection_name}' created successfully with {len(properties)} custom properties"
 	except Exception as e:
 		return False, f"Error creating collection: {str(e)}"
+
+# Legacy function for backward compatibility
+def create_collection(client: Client, collection_name: str, vectorizer: str) -> tuple[bool, str]:
+	"""Legacy function for backward compatibility"""
+	return create_collection_with_properties(client, collection_name, vectorizer, None)
 
 # Sanitize keys for Weaviate
 def sanitize_keys(data_item: Dict[str, Any]) -> Dict[str, Any]:

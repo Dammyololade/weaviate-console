@@ -3,3 +3,7 @@ showSidebarNavigation = false
 
 [browser]
 gatherUsageStats = false
+
+[server]
+fileWatcherType = "auto"
+runOnSave = true
